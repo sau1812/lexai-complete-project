@@ -1,0 +1,461 @@
+//Pr-1
+
+// Design a distributed application using RPC for remote computation where 
+client submits an integer value to the server and server calculates factorial and 
+returns the result to the client program.
+
+
+//Server.py
+
+from xmlrpc.server import SimpleXMLRPCServer
+
+def factorial(n):
+    result = 1
+    for i in range(1, n + 1):
+        result *= i
+    return result
+
+server = SimpleXMLRPCServer(("localhost", 8000))
+server.register_function(factorial, "factorial")
+
+print("Server running...")
+server.serve_forever()
+
+
+//Client.py
+
+import xmlrpc.client
+
+proxy = xmlrpc.client.ServerProxy("http://localhost:8000/")
+
+n = int(input("Enter number: "))
+print("Factorial =", proxy.factorial(n))
+
+
+
+
+
+
+//pr-2
+
+//Design a distributed application using RMI for remote computation where 
+client submits two strings to the server and server returns the concatenation of the 
+given strings. 
+
+//“This program implements RPC using XML-RPC in Python, which is conceptually similar to RMI as both allow remote method invocation.”
+
+//Server.py
+
+from xmlrpc.server import SimpleXMLRPCServer
+
+# Function to concatenate two strings
+def join_strings(a, b):
+    return a + " " + b
+
+# Create server
+server = SimpleXMLRPCServer(("localhost", 8000))
+
+# Register function
+server.register_function(join_strings, "join")
+
+print("Server running on port 8000...")
+
+# Keep server running
+server.serve_forever()
+
+
+//Client.py
+
+import xmlrpc.client
+
+# Connect to server
+proxy = xmlrpc.client.ServerProxy("http://localhost:8000/")
+
+# Take input from user
+a = input("Enter first string: ")
+b = input("Enter second string: ")
+
+# Remote procedure call
+result = proxy.join(a, b)
+
+# Display result
+print("Result:", result)
+
+
+
+//pr-3
+
+// Implement Union, Intersection, Complement and Difference operations on 
+fuzzy sets. Also create fuzzy relations by Cartesian product of any two fuzzy sets and 
+perform max-min composition on any two fuzzy relations. 
+
+
+
+
+# Fuzzy Sets
+A = {'x1': 0.2, 'x2': 0.5}
+B = {'x1': 0.6, 'x2': 0.3}
+C = {'y1': 0.7, 'y2': 0.4}
+
+# ---- Basic Operations ----
+print("Union:", {k: max(A[k], B[k]) for k in A})
+
+print("Intersection:", {k: min(A[k], B[k]) for k in A})
+
+print("Complement A:", {k: 1 - A[k] for k in A})
+
+print("Difference (A-B):", {k: min(A[k], 1 - B[k]) for k in A})
+
+
+# ---- Cartesian Product R = A x B ----
+R = {}
+for x in A:
+    for y in B:
+        R[(x, y)] = min(A[x], B[y])
+
+print("\nRelation R (A x B):", R)
+
+
+# ---- Cartesian Product S = B x C ----
+S = {}
+for y in B:
+    for z in C:
+        S[(y, z)] = min(B[y], C[z])
+
+print("Relation S (B x C):", S)
+
+
+# ---- Max-Min Composition ----
+T = {}
+for x in A:
+    for z in C:
+        T[(x, z)] = max(
+            min(R[(x, y)], S[(y, z)]) for y in B)
+        
+
+print("\nMax-Min Composition:", T)
+
+
+
+
+
+//pr-4
+
+// Write code to simulate requests coming from clients and distribute them 
+among the servers using the load balancing algorithms. 
+
+import random
+
+# Servers
+servers = ["S1", "S2", "S3"]
+
+# Simulated requests
+requests = [f"Req{i}" for i in range(1, 11)]
+
+# ---- 1. Round Robin ----
+print("Round Robin:")
+i = 0
+for req in requests:
+    server = servers[i % len(servers)]
+    print(req, "->", server)
+    i += 1
+
+
+# ---- 2. Least Connections ----
+print("\nLeast Connections:")
+
+# Track active connections
+connections = {s: 0 for s in servers}
+
+for req in requests:
+    # choose server with minimum load
+    server = min(connections, key=connections.get)
+    print(req, "->", server)
+
+    # simulate connection increase
+    connections[server] += 1
+
+print("\nFinal Load:", connections)
+
+
+
+
+//pr-5
+
+//Implement Ant colony optimization by solving the Traveling salesman problem 
+using python Problem statement- A salesman needs to visit a set of cities exactly once 
+and return to the original city. The task is to find the shortest possible route that the 
+salesman can take to visit all the cities and return to the starting city. 
+
+
+import random
+
+# Distance matrix
+d = [
+    [0, 2, 9, 10],
+    [1, 0, 6, 4],
+    [15, 7, 0, 8],
+    [6, 3, 12, 0]
+]
+
+n = 4
+pher = [[1] * n for _ in range(n)]
+alpha = 1
+beta = 2
+evaporation = 0.5
+
+
+def length(path):
+    total = 0
+    for i in range(n - 1):
+        total += d[path[i]][path[i + 1]]
+    total += d[path[-1]][path[0]]
+    return total
+
+
+def choose_next(current, unvisited):
+    probs = []
+    for city in unvisited:
+        tau = pher[current][city] ** alpha
+        eta = (1 / d[current][city]) ** beta
+        probs.append(tau * eta)
+
+    total = sum(probs)
+    probs = [p / total for p in probs]
+
+    return random.choices(unvisited, probs)[0]
+
+
+best = None
+best_len = float('inf')
+
+for _ in range(20):
+    all_paths = []
+
+    for _ in range(4):
+        path = [random.randint(0, n - 1)]
+        unvisited = list(set(range(n)) - set(path))
+
+        while unvisited:
+            next_city = choose_next(path[-1], unvisited)
+            path.append(next_city)
+            unvisited.remove(next_city)
+
+        l = length(path)
+        all_paths.append((path, l))
+
+        if l < best_len:
+            best = path
+            best_len = l
+
+    # evaporation
+    for i in range(n):
+        for j in range(n):
+            pher[i][j] *= (1 - evaporation)
+
+    # update pheromone
+    for path, l in all_paths:
+        for i in range(n - 1):
+            pher[path[i]][path[i + 1]] += 1 / l
+
+print("Best Path:", best)
+print("Distance:", best_len)
+
+
+
+//pr-6
+
+//Optimization of genetic algorithm parameter in hybrid genetic 
+algorithm-neural network modelling: Application to spray drying of coconut milk. 
+
+
+import numpy as np
+import random
+
+# Dataset
+X = np.array([[150,10],[160,12],[170,14],[180,16]]) / 200.0
+y = np.array([0.30,0.25,0.20,0.15])
+
+# Prediction
+def predict(ind, x):
+    return np.dot(x, ind[:2]) + ind[2]
+
+# Fitness (MSE)
+def fitness(ind):
+    return np.mean([(predict(ind, X[i]) - y[i])**2 for i in range(len(X))])
+
+# Individual = [w1, w2, b, mutation_rate]
+def create_individual():
+    return np.append(np.random.uniform(-1,1,3), random.uniform(0.01, 0.2))
+
+# Improved parameters
+pop_size = 10
+generations = 150
+
+population = [create_individual() for _ in range(pop_size)]
+
+for _ in range(generations):
+    population = sorted(population, key=fitness)
+    new_pop = population[:3]  # keep best 3
+
+    while len(new_pop) < pop_size:
+        p1, p2 = random.sample(population[:5], 2)
+
+        # Crossover
+        child = (p1 + p2) / 2
+
+        # Mutation (controlled)
+        m_rate = child[3]
+        if random.random() < m_rate:
+            child[:3] += np.random.normal(0, 0.05, 3)
+
+        new_pop.append(child)
+
+    population = new_pop
+
+best = population[0]
+
+print("Best Weights:", best[:3])
+print("Optimized Mutation Rate:", round(best[3], 3))
+
+# Predictions
+for i in range(len(X)):
+    print("Input:", X[i], "Predicted:", round(predict(best, X[i]), 3))
+
+
+
+//pr-7
+
+//Implement DEAP (Distributed Evolutionary Algorithms) using Python
+
+
+import random
+from deap import base, creator, tools
+
+creator.create("F", base.Fitness, weights=(1.0,))
+creator.create("I", list, fitness=creator.F)
+
+tb = base.Toolbox()
+tb.register("a", random.uniform, -10, 10)
+tb.register("i", tools.initRepeat, creator.I, tb.a, 1)
+tb.register("p", tools.initRepeat, list, tb.i)
+
+tb.register("e", lambda x: (x[0]**2,))
+tb.register("m", tools.cxBlend, alpha=0.5)
+tb.register("u", tools.mutGaussian, mu=0, sigma=1, indpb=1.0)
+tb.register("s", tools.selTournament, tournsize=2)
+
+p = tb.p(6)
+
+for _ in range(10):
+    for x in p:
+        if not x.fitness.valid:
+            x.fitness.values = tb.e(x)
+
+    o = list(map(tb.clone, tb.s(p, len(p))))
+
+    for i in range(0, len(o), 2):
+        if i+1 < len(o):
+            tb.m(o[i], o[i+1])
+            tb.u(o[i]); tb.u(o[i+1])
+            del o[i].fitness.values, o[i+1].fitness.values
+
+    p = o
+
+for x in p:
+    if not x.fitness.valid:
+        x.fitness.values = tb.e(x)
+
+b = tools.selBest(p, 1)[0]
+print("Best:", b)
+print("Fit:", b.fitness.values)
+
+
+
+//pr-8
+
+//Implement Any one membership function by fuzzy  & Calculate the     
+Membership function values using triangular shape in Python 
+
+
+# Triangular Membership Function
+def triangular_mf(x, a, b, c):
+    if x <= a or x >= c:
+        return 0
+    elif x <= b:
+        return (x - a) / (b - a)
+    else:
+        return (c - x) / (c - b)
+
+# Parameters
+a = 10
+b = 20
+c = 30
+
+# Input values
+values = [5, 10, 15, 20, 25, 30, 35]
+
+# Calculate membership values
+for x in values:
+    print("x =", x, "-> µ(x) =", triangular_mf(x, a, b, c))
+
+
+
+//pr9
+//To apply the artificial immune pattern recognition to perform a task of 
+structure damage Classification 
+
+
+import math
+# Data: [feature1, feature2] → class (0=Normal, 1=Damaged)
+data = [
+    ([2, 3], 0),
+    ([3, 4], 0),
+    ([8, 9], 1),
+    ([9, 10], 1)
+]
+def dist(a, b):
+    return math.sqrt((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2)
+def classify(sample):
+    nearest = data[0]
+    min_d = dist(sample, data[0][0])
+    for d in data:
+        d_val = dist(sample, d[0])
+        if d_val < min_d:
+            min_d = d_val
+            nearest = d
+    return nearest[1]
+test = [4, 5]
+result = classify(test)
+print("\nTest:", test)
+print("Class:", "Damaged" if result == 1 else "Normal")
+
+
+
+//pr 11
+
+// Implementation of Clonal selection algorithm using Python.
+
+import numpy as np
+
+def f(x): return x**2
+
+pop = np.random.uniform(-10, 10, 10)
+
+for g in range(20):
+    fit = np.array([f(x) for x in pop])
+    sel = pop[np.argsort(fit)[:5]]
+
+    clones = []
+    for x in sel:
+        clones += [x]*int(10/(abs(x)+1))
+
+    clones = np.array(clones) + 0.1*np.random.randn(len(clones))
+
+    pop = np.concatenate((pop, clones))
+    fit = np.array([f(x) for x in pop])
+    pop = pop[np.argsort(fit)[:10]]
+
+    print("Gen", g+1, "Best =", pop[0])
+
+print("Final Best:", pop[0])
